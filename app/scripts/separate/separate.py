@@ -13,16 +13,14 @@ def run_demucs(input_file, output_name="htdemucs_6s", format="mp3"):
     try:
         # 出力先ディレクトリを作成
         base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/separated')
-        file_name = os.path.splitext(os.path.basename(input_file))[0]
-        output_dir = os.path.join(base_dir, file_name)
-        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(base_dir, exist_ok=True)
 
         # Build the Demucs command
         command = [
             "demucs",
             "--name", output_name,
             f"--{format}",
-            "--out", output_dir,
+            "--out", base_dir,
             input_file
         ]
         
