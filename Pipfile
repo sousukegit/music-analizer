@@ -12,6 +12,7 @@ librosa = "*"
 soundfile = "*"
 numpy = "*"
 psycopg2-binary = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
