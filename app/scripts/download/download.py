@@ -31,8 +31,10 @@ def download_and_convert_to_wav_with_thumbnail(url, base_output_path):
             extension = title_match.group(2)
 
             # 保存先ディレクトリを作成
-            final_dir = os.path.join(base_output_path, title)
-            # os.makedirs(final_dir, exist_ok=True)
+            from datetime import datetime
+            today = datetime.now().strftime("%Y%m%d")
+            final_dir = os.path.join(base_output_path, today, title)
+            os.makedirs(final_dir, exist_ok=True)
 
             # ファイルを移動
             old_path = os.path.join(temp_dir, file_name)
