@@ -1,0 +1,10 @@
+事前にPCへダウンロード必要なもの
+```
+## パッケージ管理用
+brew install pipenv
+##Ydp用
+brew install ffmpeg
+##DB用
+brew install postgresql
+```
+
