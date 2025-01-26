@@ -1,3 +1,5 @@
 # ダウンロードした音楽ファイルを除外
 app/music/ 
 .env
+music.youtube.com_cookies.txt
+app/metadata/
