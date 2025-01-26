@@ -6,5 +6,8 @@ brew install pipenv
 brew install ffmpeg
 ##DB用
 brew install postgresql
+##CookieをNetScape取得
+https://chromewebstore.google.com/detail/Get%20cookies.txt%20LOCALLY/cclelndahbckbenkjhflpdbgdldlbecc?hl=ja
+
 ```
 
