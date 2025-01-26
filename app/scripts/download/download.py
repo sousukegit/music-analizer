@@ -55,9 +55,10 @@ def show_metadata(base_output_path):
                     print(json.dumps(metadata, indent=4, ensure_ascii=False))  # 見やすくフォーマット
 
 class YTDLPDownloader:
-    def __init__(self, download_path, ffmpeg_path='/opt/homebrew/bin/ffmpeg'):
+    def __init__(self, download_path, ffmpeg_path='/opt/homebrew/bin/ffmpeg', cookies_file='../../../music.youtube.com_cookies.txt'):
         self.download_path = download_path
         self.ffmpeg_path = ffmpeg_path
+        self.cookies_file = cookies_file
         self.ydl_opts = {
             'format': 'bestaudio',  # 音声の品質はデフォルト
             'outtmpl': f"{self.download_path}/temp/%(title)s.%(ext)s",
@@ -67,14 +68,22 @@ class YTDLPDownloader:
             }],
             'ffmpeg_location': self.ffmpeg_path,
             'quiet': True,
+            'cookiefile': self.cookies_file,  # クッキーファイルを指定
         }
         self.ydl = yt_dlp.YoutubeDL(self.ydl_opts)
 
     def download_audio(self, url):
+        if not os.path.exists(self.cookies_file):
+            print(f"クッキーファイルが存在しません: {self.cookies_file}")
+            return None
         info_dict = self.ydl.extract_info(url, download=True)
         sanitized_info = self.ydl.sanitize_info(info_dict)
         print(json.dumps(sanitized_info, indent=4, ensure_ascii=False))
         return sanitized_info
+
+    def save_metadata_as_json(self, metadata, file_path):
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=4, ensure_ascii=False)
 
     def organize_files(self):
         temp_dir = os.path.join(self.download_path, 'temp')
@@ -89,11 +98,18 @@ class YTDLPDownloader:
 
 # メイン処理
 def main():
-    url = "https://music.youtube.com/watch?v=KAaUyVJoNAE"
+    url = "https://music.youtube.com/watch?v=iZQ8mm2Fg9c"
     base_output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
-    downloader = YTDLPDownloader(base_output_path)
-    downloader.download_audio(url)
-    downloader.organize_files()
+    downloader = YTDLPDownloader(
+        base_output_path, 
+        cookies_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../music.youtube.com_cookies.txt')
+    )
+    metadata = downloader.download_audio(url)
+    if metadata:
+        # メタデータをJSONファイルとして保存
+        json_file_path = os.path.join(base_output_path, 'metadata.json')
+        downloader.save_metadata_as_json(metadata, json_file_path)
+        downloader.organize_files()
 
 if __name__ == "__main__":
     main()
