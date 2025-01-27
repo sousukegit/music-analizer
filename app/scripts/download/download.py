@@ -25,7 +25,9 @@ class YTDLPDownloader:
                 'preferredcodec': 'wav',
             }],
             'ffmpeg_location': self.ffmpeg_path,
-            'quiet': True,
+            'quiet': False,  # 詳細なログを出力するためにquietをFalseに設定
+            'verbose': True,  # 詳細なログを出力するためにverboseをTrueに設定
+            'print_headers': True,  # リクエストヘッダーを表示
             'cookiefile': self.cookies_file,  # クッキーファイルを指定
         }
         self.ydl = yt_dlp.YoutubeDL(self.ydl_opts)
@@ -36,7 +38,6 @@ class YTDLPDownloader:
             return None
         info_dict = self.ydl.extract_info(url, download=True)
         sanitized_info = self.ydl.sanitize_info(info_dict)
-        print(json.dumps(sanitized_info, indent=4, ensure_ascii=False))
         return sanitized_info
 
     def organize_files(self):
@@ -57,9 +58,10 @@ class YTDLPDownloader:
         artist_name = metadata.get('artist')
         duration = metadata.get('duration')
         url = metadata.get('webpage_url')
+        release_date_str = metadata.get('release_date')
+        release_date = datetime.strptime(release_date_str, '%Y%m%d').date() if release_date_str else None
             
         try:
-            print(f"DB_CONFIG: {DB_CONFIG}")
             # データベースに接続
             conn = psycopg2.connect(**DB_CONFIG)
             cursor = conn.cursor()
@@ -77,10 +79,10 @@ class YTDLPDownloader:
             print(f"アーティストの挿入: {artist_id}")
             # Songsテーブルに曲を挿入
             cursor.execute("""
-                INSERT INTO Songs (title, duration, youtube_music_id, artist_id, url)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO Songs (title, duration, youtube_music_id, artist_id, url, release_date)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (youtube_music_id) DO NOTHING
-            """, (title, duration, youtube_music_id, artist_id, url))
+            """, (title, duration, youtube_music_id, artist_id, url, release_date))
 
             # データベース操作が完了したら、挿入した曲とアーティストの情報を取得して出力
             cursor.execute("SELECT * FROM Songs WHERE youtube_music_id = %s", (youtube_music_id,))
@@ -105,7 +107,7 @@ class YTDLPDownloader:
 
 # メイン処理
 def main():
-    url = "https://music.youtube.com/watch?v=zOiidX9xoSc"
+    url = "https://music.youtube.com/watch?v=a56Bic9Orn4"
     base_output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
     downloader = YTDLPDownloader(
         base_output_path, 
