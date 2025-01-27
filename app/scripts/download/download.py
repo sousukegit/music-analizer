@@ -1,58 +1,16 @@
 import subprocess
-import json
+import sys
 import os
 import re
 import yt_dlp
 from datetime import datetime
+import json
+import psycopg2  # PostgreSQL接続用のライブラリをインポート
 
-# yt-dlpで動画をダウンロードしてWAVファイルに変換し、サムネイルを保存する
-def download_and_convert_to_wav_with_thumbnail(url, base_output_path):
-    # 一時的なファイル名テンプレート
-    temp_template = f"{base_output_path}/temp/%(title)s.%(ext)s"
-    
-    # yt-dlpコマンド
-    command = [
-        
-        "yt-dlp",
-        "-x",  # 音声抽出
-        "--audio-format", "wav",  # WAV形式
-        "--write-info-json",  # メタデータをJSONファイルに出力
-        "--ffmpeg-location", "/opt/homebrew/bin/ffmpeg",
-        "-o", temp_template,  # 出力先テンプレート（仮）
-        url
-    ]
-    subprocess.run(command, check=True)
 
-    # 一時ディレクトリ内のファイルを整理
-    temp_dir = f"{base_output_path}/temp"
-    for file_name in os.listdir(temp_dir):
-        # タイトル部分を抽出
-        title_match = re.match(r"(.+)\.(wav|info\.json|jpg|png|webp)", file_name)
-        if title_match:
-            title = title_match.group(1)
-            extension = title_match.group(2)
 
-            # 保存先ディレクトリを作成
-            today = datetime.now().strftime("%Y%m%d")
-            final_dir = os.path.join(base_output_path, today, title)
-            os.makedirs(final_dir, exist_ok=True)
+from ..db.config import DB_CONFIG  # データベース設定をインポート
 
-            # ファイルを移動
-            old_path = os.path.join(temp_dir, file_name)
-            new_path = os.path.join(final_dir, file_name)
-            os.rename(old_path, new_path)
-
-# メタデータを読み込んで表示する
-def show_metadata(base_output_path):
-    music_dir = os.path.join(base_output_path, "music")
-    for root, dirs, files in os.walk(music_dir):
-        for file_name in files:
-            if file_name.endswith(".info.json"):
-                json_path = os.path.join(root, file_name)
-                with open(json_path, 'r', encoding='utf-8') as f:
-                    metadata = json.load(f)
-                    print(f"メタデータ ({json_path}):")
-                    print(json.dumps(metadata, indent=4, ensure_ascii=False))  # 見やすくフォーマット
 
 class YTDLPDownloader:
     def __init__(self, download_path, ffmpeg_path='/opt/homebrew/bin/ffmpeg', cookies_file='../../../music.youtube.com_cookies.txt'):
@@ -81,10 +39,6 @@ class YTDLPDownloader:
         print(json.dumps(sanitized_info, indent=4, ensure_ascii=False))
         return sanitized_info
 
-    def save_metadata_as_json(self, metadata, file_path):
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(metadata, f, indent=4, ensure_ascii=False)
-
     def organize_files(self):
         temp_dir = os.path.join(self.download_path, 'temp')
         today = datetime.now().strftime("%Y%m%d")
@@ -96,9 +50,62 @@ class YTDLPDownloader:
             new_path = os.path.join(final_dir, file_name)
             os.rename(old_path, new_path)
 
+    def insert_metadata_into_db(self, metadata):
+        # 必要な項目を取得
+        youtube_music_id = metadata.get('id')
+        title = metadata.get('title')
+        artist_name = metadata.get('artist')
+        duration = metadata.get('duration')
+        url = metadata.get('webpage_url')
+            
+        try:
+            print(f"DB_CONFIG: {DB_CONFIG}")
+            # データベースに接続
+            conn = psycopg2.connect(**DB_CONFIG)
+            cursor = conn.cursor()
+            print(f"データベースに接続しました: {conn}")
+
+            # Artistsテーブルにアーティストを挿入または存在確認
+            cursor.execute("SELECT artist_id FROM Artists WHERE english_name = %s", (artist_name,))
+            artist = cursor.fetchone()
+            print(f"アーティストの取得: {artist}")
+            if artist:
+                artist_id = artist[0]
+            else:
+                cursor.execute("INSERT INTO Artists (english_name) VALUES (%s) RETURNING artist_id", (artist_name,))
+                artist_id = cursor.fetchone()[0]
+            print(f"アーティストの挿入: {artist_id}")
+            # Songsテーブルに曲を挿入
+            cursor.execute("""
+                INSERT INTO Songs (title, duration, youtube_music_id, artist_id, url)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (youtube_music_id) DO NOTHING
+            """, (title, duration, youtube_music_id, artist_id, url))
+
+            # データベース操作が完了したら、挿入した曲とアーティストの情報を取得して出力
+            cursor.execute("SELECT * FROM Songs WHERE youtube_music_id = %s", (youtube_music_id,))
+            inserted_song = cursor.fetchone()
+            print("挿入された曲の情報:", inserted_song)
+
+            cursor.execute("SELECT * FROM Artists WHERE artist_id = %s", (artist_id,))
+            inserted_artist = cursor.fetchone()
+            print("挿入されたアーティストの情報:", inserted_artist)
+
+            # コミットして接続を閉じる
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+        except Exception as e:
+            print(f"データベース操作中にエラーが発生しました: {e}")
+            if conn:
+                conn.rollback()
+                print("ロールバックが完了しました。")
+
+
 # メイン処理
 def main():
-    url = "https://music.youtube.com/watch?v=iZQ8mm2Fg9c"
+    url = "https://music.youtube.com/watch?v=zOiidX9xoSc"
     base_output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
     downloader = YTDLPDownloader(
         base_output_path, 
@@ -106,10 +113,8 @@ def main():
     )
     metadata = downloader.download_audio(url)
     if metadata:
-        # メタデータをJSONファイルとして保存
-        json_file_path = os.path.join(base_output_path, 'metadata.json')
-        downloader.save_metadata_as_json(metadata, json_file_path)
         downloader.organize_files()
+        downloader.insert_metadata_into_db(metadata)  # メタデータをデータベースに挿入
 
 if __name__ == "__main__":
     main()
