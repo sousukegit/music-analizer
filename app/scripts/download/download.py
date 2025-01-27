@@ -25,9 +25,7 @@ class YTDLPDownloader:
                 'preferredcodec': 'wav',
             }],
             'ffmpeg_location': self.ffmpeg_path,
-            'quiet': False,  # 詳細なログを出力するためにquietをFalseに設定
-            'verbose': True,  # 詳細なログを出力するためにverboseをTrueに設定
-            'print_headers': True,  # リクエストヘッダーを表示
+            'quiet': True,  # 詳細なログを出力するためにquietをFalseに設定
             'cookiefile': self.cookies_file,  # クッキーファイルを指定
         }
         self.ydl = yt_dlp.YoutubeDL(self.ydl_opts)
