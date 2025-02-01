@@ -12,7 +12,8 @@ def run_demucs(input_file, output_name="htdemucs_6s", format="mp3"):
     """
     try:
         # 出力先ディレクトリを作成
-        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/separated')
+        from datetime import datetime
+        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../music/separated/{datetime.now().strftime("%Y%m%d")}')
         os.makedirs(base_dir, exist_ok=True)
 
         # Build the Demucs command
@@ -42,15 +43,18 @@ def process_all_audio_files():
     base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
     
     # 日付フォルダを走査
-    for date_folder in os.listdir(base_dir):
-        date_path = os.path.join(base_dir, date_folder)
-        if os.path.isdir(date_path):
-            # 日付フォルダ内のWAVファイルを探す
-            for file in os.listdir(date_path):
-                if file.endswith('.wav'):
-                    wav_path = os.path.join(date_path, file)
-                    print(f"Processing: {wav_path}")
-                    run_demucs(wav_path)
+    from datetime import datetime
+    today = datetime.now().strftime("%Y%m%d")
+    date_path = os.path.join(base_dir, today)
+    if os.path.isdir(date_path):
+        # 当日の日付フォルダ内のWAVファイルを探す
+        for file in os.listdir(date_path):
+            if file.endswith('.wav'):
+                wav_path = os.path.join(date_path, file)
+                print(f"Processing: {wav_path}")
+                run_demucs(wav_path)
+    else:
+        print(f"Error: {date_path} is not found.")
 
 if __name__ == "__main__":
     process_all_audio_files()
