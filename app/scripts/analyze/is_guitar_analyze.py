@@ -103,9 +103,9 @@ def detect_guitar_playing_style_with_dominance(file_path, intervals, frame_durat
 
 
 if __name__ == "__main__":
-    guitar_file = "/Users/manabe_soichiro/Desktop/practice/demucs_test/separated/htdemucs_6s/KMDT25/guitar.mp3"
+    guitar_file = "app/music/separated/20250201/htdemucs_6s/6__光の中へ/guitar.mp3"
     # 事前に指定された間奏の区間
-    intervals = [(1.0, 13.0), (20.68, 30.65)]
+    intervals = [(5.4, 23.0), (107.53, 115.64)]
 
     try:
         detect_guitar_playing_style_with_dominance(guitar_file, intervals)

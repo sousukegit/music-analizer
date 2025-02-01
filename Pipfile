@@ -13,6 +13,8 @@ soundfile = "*"
 numpy = "*"
 psycopg2-binary = "*"
 python-dotenv = "*"
+matplotlib = "*"
+pandas = "*"
 
 [dev-packages]
 

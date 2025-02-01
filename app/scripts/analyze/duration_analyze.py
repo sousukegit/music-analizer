@@ -1,6 +1,8 @@
 import librosa
 import numpy as np
 import os
+import psycopg2
+from ..db.config import DB_CONFIG  # データベース設定をインポート
 
 def detect_silent_sections(file_path, silence_threshold=-30.0, min_silence_duration=5):
     """
@@ -24,11 +26,6 @@ def detect_silent_sections(file_path, silence_threshold=-30.0, min_silence_durat
         # 無音フレームの判定
         print("Detecting silence...")
         silence_frames = energy_db < silence_threshold
-
-        # デバッグログを追加（フレームごとの音量を表示）
-        for i, energy_value in enumerate(energy_db):
-            time = i * hop_length / sr
-            # print(f"Time: {time:.2f}s, Energy (dB): {energy_value:.2f}, Silent: {energy_value < silence_threshold}")
 
         # 無音フレームを秒単位でグループ化
         print("Grouping silent sections...")
@@ -66,12 +63,49 @@ def detect_silent_sections(file_path, silence_threshold=-30.0, min_silence_durat
         print(f"An error occurred: {e}")
         raise
 
+def insert_soro_records(song_id, silence_sections):
+    """
+    検出された無音区間をsoroテーブルに挿入する
+    """
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        insert_query = """
+            INSERT INTO soro (song_id, start_time, end_time, is_guitar_soro, guitar_score)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        for section in silence_sections:
+            start_time, end_time = section
+            cursor.execute(insert_query, (song_id, start_time, end_time, False, None))
+        conn.commit()
+        print(f"soroテーブルに{len(silence_sections)}件のレコードを挿入しました。")
+    except Exception as e:
+        print(f"データベースへの挿入中にエラーが発生しました: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def extract_song_id(folder_name):
+    """
+    フォルダ名からsong_idを抽出する
+    フォルダ名の形式は'songid_曲名'と仮定
+    """
+    try:
+        song_id_str = folder_name.split('_')[0]
+        song_id = int(song_id_str)
+        return song_id
+    except (IndexError, ValueError) as e:
+        print(f"フォルダ名 '{folder_name}' からsong_idを抽出できませんでした: {e}")
+        return None
+
 def process_all_vocal_files():
     """
-    htdemucs_6s配下の全てのvocals.mp3ファイルを処理
+    実行日のYYYYMMDDに基づいてhtdemucs_6s配下の全てのvocals.mp3ファイルを処理
     """
-    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/separated/htdemucs_6s')
-    
+    from datetime import datetime
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../music/separated/{datetime.now().strftime("%Y%m%d")}/htdemucs_6s')
     # htdemucs_6s配下のフォルダを走査
     for folder in os.listdir(base_dir):
         folder_path = os.path.join(base_dir, folder)
@@ -84,8 +118,18 @@ def process_all_vocal_files():
                     print(f"\nDetected silent sections in {folder}:")
                     for start, end in silent_sections:
                         print(f"Start: {start:.2f}s, End: {end:.2f}s")
+                    
+                    # フォルダ名からsong_idを抽出
+                    song_id = extract_song_id(folder)
+                    if song_id is None:
+                        print(f"song_idの取得に失敗したため、{folder}の処理をスキップします。")
+                        continue
+                    
+                    # データベースに挿入
+                    insert_soro_records(song_id, silent_sections)
+                    
                 except Exception as e:
-                    print(f"Failed to process {folder}: {e}")
+                    print(f"{folder}の処理に失敗しました: {e}")
 
 if __name__ == "__main__":
     process_all_vocal_files()
