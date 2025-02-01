@@ -1,0 +1,35 @@
+=== 現在のテーブル一覧 ===
+
+テーブル名: artists
+カラム情報:
+  - artist_id: integer NOT NULL
+  - english_name: character varying NOT NULL
+  - japanese_name: character varying NULL許容
+  - kana_name: character varying NULL許容
+  - created_at: timestamp without time zone (デフォルト: CURRENT_TIMESTAMP) NULL許容
+
+テーブル名: songs
+カラム情報:
+  - song_id: integer NOT NULL
+  - title: character varying NOT NULL
+  - youtube_music_id: character varying NULL許容
+  - url: character varying NULL許容
+  - duration: double precision NULL許容
+  - created_at: timestamp without time zone (デフォルト: CURRENT_TIMESTAMP) NULL許容
+  - artist_id: integer NULL許容
+  - release_date: date NULL許容
+外部キー制約:
+  - artist_id -> artists(artist_id)
+
+テーブル名: soro
+カラム情報:
+  - soro_id: integer NOT NULL
+  - song_id: integer NOT NULL
+  - start_time: double precision NOT NULL
+  - end_time: double precision NOT NULL
+  - is_guitar_soro: boolean (デフォルト: false) NULL許容
+  - guitar_score: double precision NULL許容
+  - created_at: timestamp without time zone (デフォルト: CURRENT_TIMESTAMP) NULL許容
+外部キー制約:
+  - song_id -> songs(song_id)
+
