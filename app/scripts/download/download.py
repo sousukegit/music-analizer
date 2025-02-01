@@ -38,7 +38,7 @@ class YTDLPDownloader:
         sanitized_info = self.ydl.sanitize_info(info_dict)
         return sanitized_info
 
-    def organize_files(self):
+    def organize_files(self, song_id):
         temp_dir = os.path.join(self.download_path, 'temp')
         today = datetime.now().strftime("%Y%m%d")
         final_dir = os.path.join(self.download_path, today)
@@ -46,8 +46,11 @@ class YTDLPDownloader:
 
         for file_name in os.listdir(temp_dir):
             old_path = os.path.join(temp_dir, file_name)
-            new_path = os.path.join(final_dir, file_name)
+            base, ext = os.path.splitext(file_name)
+            new_file_name = f"{song_id}__{base}.wav"
+            new_path = os.path.join(final_dir, new_file_name)
             os.rename(old_path, new_path)
+            print(f"ファイルをリネームしました: {old_path} → {new_path}")
 
     def insert_metadata_into_db(self, metadata):
         # 必要な項目を取得
@@ -75,37 +78,44 @@ class YTDLPDownloader:
                 cursor.execute("INSERT INTO Artists (english_name) VALUES (%s) RETURNING artist_id", (artist_name,))
                 artist_id = cursor.fetchone()[0]
             print(f"アーティストの挿入: {artist_id}")
+            
             # Songsテーブルに曲を挿入
             cursor.execute("""
                 INSERT INTO Songs (title, duration, youtube_music_id, artist_id, url, release_date)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (youtube_music_id) DO NOTHING
+                RETURNING song_id
             """, (title, duration, youtube_music_id, artist_id, url, release_date))
 
-            # データベース操作が完了したら、挿入した曲とアーティストの情報を取得して出力
-            cursor.execute("SELECT * FROM Songs WHERE youtube_music_id = %s", (youtube_music_id,))
-            inserted_song = cursor.fetchone()
-            print("挿入された曲の情報:", inserted_song)
-
-            cursor.execute("SELECT * FROM Artists WHERE artist_id = %s", (artist_id,))
-            inserted_artist = cursor.fetchone()
-            print("挿入されたアーティストの情報:", inserted_artist)
+            song = cursor.fetchone()
+            if song:
+                song_id = song[0]
+                print(f"曲が挿入されました。song_id: {song_id}")
+            else:
+                # 既に存在する場合、song_idを取得
+                cursor.execute("SELECT song_id FROM Songs WHERE youtube_music_id = %s", (youtube_music_id,))
+                song = cursor.fetchone()
+                song_id = song[0] if song else None
+                print(f"既存の曲のsong_id: {song_id}")
 
             # コミットして接続を閉じる
             conn.commit()
             cursor.close()
             conn.close()
 
+            return song_id  # song_idを返す
+
         except Exception as e:
             print(f"データベース操作中にエラーが発生しました: {e}")
             if conn:
                 conn.rollback()
                 print("ロールバックが完了しました。")
+            return None
 
 
 # メイン処理
 def main():
-    url = "https://music.youtube.com/watch?v=a56Bic9Orn4"
+    url = "https://music.youtube.com/watch?v=GPNMTOxCeno"
     base_output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
     downloader = YTDLPDownloader(
         base_output_path, 
@@ -113,8 +123,11 @@ def main():
     )
     metadata = downloader.download_audio(url)
     if metadata:
-        downloader.organize_files()
-        downloader.insert_metadata_into_db(metadata)  # メタデータをデータベースに挿入
+        song_id = downloader.insert_metadata_into_db(metadata)  # メタデータをデータベースに挿入しsong_idを取得
+        if song_id:
+            downloader.organize_files(song_id)  # song_idを渡してファイルを整理・リネーム
+        else:
+            print("song_idの取得に失敗しました。ファイルの整理をスキップします。")
 
 if __name__ == "__main__":
     main()
