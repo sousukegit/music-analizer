@@ -65,18 +65,37 @@ def detect_silent_sections(file_path, silence_threshold=-30.0, min_silence_durat
 
 def insert_soro_records(song_id, silence_sections):
     """
-    検出された無音区間をsoroテーブルに挿入する
+    検出された無音区間をsoroテーブルに挿入する。ただし、既存のレコードと重複しないようにする。
     """
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cursor = conn.cursor()
+
+        # 既存の無音区間を取得
+        cursor.execute("""
+            SELECT start_time, end_time FROM soro WHERE song_id = %s
+        """, (song_id,))
+        existing_sections = cursor.fetchall()
+
         insert_query = """
             INSERT INTO soro (song_id, start_time, end_time, is_guitar_soro, guitar_score)
             VALUES (%s, %s, %s, %s, %s)
         """
+        new_records_count = 0
         for section in silence_sections:
             start_time, end_time = section
-            cursor.execute(insert_query, (song_id, start_time, end_time, False, None))
+            # 重複チェック
+            is_duplicate = False
+            for existing_start, existing_end in existing_sections:
+                if (start_time == existing_start and end_time == existing_end) or \
+                   (start_time >= existing_start and start_time <= existing_end) or \
+                   (end_time >= existing_start and end_time <= existing_end):
+                    is_duplicate = True
+                    print(f"重複している区間: {start_time} - {end_time}")
+                    break
+
+            if not is_duplicate:
+                cursor.execute(insert_query, (song_id, start_time, end_time, False, None))
         conn.commit()
         print(f"soroテーブルに{len(silence_sections)}件のレコードを挿入しました。")
     except Exception as e:
@@ -106,11 +125,12 @@ def process_all_vocal_files():
     """
     from datetime import datetime
     base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'../../music/separated/{datetime.now().strftime("%Y%m%d")}/htdemucs_6s')
+    print(f"base_dir: {base_dir}")
     # htdemucs_6s配下のフォルダを走査
     for folder in os.listdir(base_dir):
         folder_path = os.path.join(base_dir, folder)
         if os.path.isdir(folder_path):
-            vocals_file = os.path.join(folder_path, 'vocals.mp3')
+            vocals_file = os.path.join(folder_path, 'vocals.wav')
             if os.path.exists(vocals_file):
                 print(f"\nProcessing vocals in folder: {folder}")
                 try:
@@ -130,6 +150,8 @@ def process_all_vocal_files():
                     
                 except Exception as e:
                     print(f"{folder}の処理に失敗しました: {e}")
+        else:
+            print(f"フォルダ {folder} が見つかりません。")
 
 if __name__ == "__main__":
     process_all_vocal_files()
