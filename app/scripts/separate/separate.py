@@ -1,14 +1,14 @@
 import subprocess
 import os
 
-def run_demucs(input_file, output_name="htdemucs_6s", format="mp3"):
+def run_demucs(input_file, output_name="htdemucs_6s"):
     """
     Runs the Demucs command to process an audio file.
     
     Args:
         input_file (str): Path to the input audio file.
         output_name (str): Name for the Demucs output.
-        format (str): Output format (e.g., mp3).
+        format (str): Output format (e.g., wav).
     """
     try:
         # 出力先ディレクトリを作成
@@ -20,7 +20,6 @@ def run_demucs(input_file, output_name="htdemucs_6s", format="mp3"):
         command = [
             "demucs",
             "--name", output_name,
-            f"--{format}",
             "--out", base_dir,
             input_file
         ]
