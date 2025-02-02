@@ -3,18 +3,10 @@ from psycopg2 import sql
 
 from dotenv import load_dotenv
 import os
+from config import DB_CONFIG, export_schema_to_file
 
 # .envファイルから環境変数を読み込む
 load_dotenv()
-
-# データベース接続情報
-DB_CONFIG = {
-    "dbname": os.environ["POSTGRES_DB"],
-    "user": os.environ["POSTGRES_USER"], 
-    "password": os.environ["POSTGRES_PASSWORD"],
-    "host": "localhost",
-    "port": 5432
-}
 
 # SQLスクリプト：テーブル作成
 CREATE_SONGS_TABLE = """
@@ -69,3 +61,5 @@ def create_tables():
 
 if __name__ == "__main__":
     create_tables()
+    # スキーマ情報をエクスポート
+    export_schema_to_file()
