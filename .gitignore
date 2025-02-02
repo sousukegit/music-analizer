@@ -3,3 +3,4 @@ app/music/
 .env
 music.youtube.com_cookies.txt
 app/metadata/
+app/_cookies/
