@@ -115,7 +115,7 @@ class YTDLPDownloader:
 
 # メイン処理
 def main():
-    url = "https://music.youtube.com/watch?v=GPNMTOxCeno"
+    url = "https://music.youtube.com/watch?v=2WGgkcVBqoc&list=RDTMAK5uy_mZtXeU08kxXJOUhL0ETdAuZTh1z7aAFAo"
     base_output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
     downloader = YTDLPDownloader(
         base_output_path, 
