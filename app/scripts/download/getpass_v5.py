@@ -1,6 +1,5 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import StaleElementReferenceException
 import json
 import time
 import traceback
@@ -70,64 +69,51 @@ def get_playlist_videos(playlist_url):
         driver.get(playlist_url)
         time.sleep(5)
         
+        # プレイリスト内の曲を取得
+        items = driver.find_elements(By.CSS_SELECTOR, "ytmusic-player-queue-item")
+        print(f"🎵 全体のアイテム数: {len(items)}")
+
+        visible_items = [item for item in items if item.is_displayed()]
+        print(f"🎵 表示されているアイテム数: {len(visible_items)}")
+
         video_data = []
-        item_count = 0
         
-        while True:
+        for i, item in enumerate(visible_items):
             try:
-                # 再度アイテムリストを取得
-                items = driver.find_elements(By.CSS_SELECTOR, "ytmusic-player-queue-item")
-                print(f"🎵 現在のアイテム数: {len(items)}")
 
-                # 非表示アイテムをスキップしながら処理
-                for item in items[item_count:]:  # 進捗を保持して再開可能にする
-                    try:
-                        # 非表示の要素はスキップ
-                        if not item.is_displayed():
-                            print(f"⏩ アイテム {item_count + 1} は非表示のためスキップします")
-                            item_count += 1
-                            continue
-                        
-                        # 曲タイトルを取得
-                        title_element = item.find_element(By.CSS_SELECTOR, ".song-title")
-                        title = title_element.get_attribute("title")
-                        
-                        # アーティスト名を取得
-                        artist_element = item.find_element(By.CSS_SELECTOR, ".byline")
-                        artist = artist_element.get_attribute("title")
-                        
-                        # 現在の曲のURL
-                        play_button = item.find_element(By.CSS_SELECTOR, "#play-button")
-                        play_button.click()
-                        time.sleep(3)
-                        current_url = driver.current_url
-                        
-                        print(f"✅ 曲: {title}, アーティスト: {artist}, URL: {current_url}")
-                        video_data.append({"title": title, "artist": artist, "url": current_url})
-                        item_count += 1
+                # 非表示の要素はスキップ
+                if not item.is_displayed():
+                    print(f"⏩ アイテム {i+1} は非表示のためスキップします")
+                    continue
+                # 曲タイトルを取得
 
-                    except StaleElementReferenceException:
-                        print(f"⏳ アイテム {item_count + 1} の DOM が更新されました。リトライします...")
-                        break  # 再取得ループに戻る
-                    except Exception as e:
-                        print(f"⚠ 曲の取得でエラー: {e}")
-                        traceback.print_exc()
-                        item_count += 1
-
-                else:
-                    # すべてのアイテムを処理済み
-                    break
-
+                title_element = item.find_element(By.CSS_SELECTOR, ".song-title")
+                title = title_element.get_attribute("title")
+                print('song　title', title)
+                
+                # アーティスト名を取得
+                artist_element = item.find_element(By.CSS_SELECTOR, ".byline")
+                artist = artist_element.get_attribute("title")
+                print('artist', artist)
+                # 現在の曲のURL
+                play_button = item.find_element(By.CSS_SELECTOR, "#play-button")
+                play_button.click()
+                time.sleep(3)
+                current_url = driver.current_url
+                
+                print(f"✅ 曲: {title}, アーティスト: {artist}, URL: {current_url}")
+                video_data.append({"title": title, "artist": artist, "url": current_url})
             except Exception as e:
-                print(f"❌ プレイリスト処理中にエラー: {e}")
+                print(f"⚠ 曲の取得でエラー: {e}")
+                driver.save_screenshot(f"error_{i+1}.png")
+
+
                 traceback.print_exc()
-                break
 
         return video_data
 
     finally:
         driver.quit()
-
 
 def save_to_csv(video_data, filename=CSV_FILE):
     try:
