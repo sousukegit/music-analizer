@@ -1,8 +1,10 @@
 # ダウンロードした音楽ファイルを除外
 app/music/ 
+app/csv/
 .env
 music.youtube.com_cookies.txt
 music.youtube.com_cookies.json
 app/metadata/
 app/_cookies/
 app/models/
+
