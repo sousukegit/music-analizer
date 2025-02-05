@@ -1,3 +1,5 @@
+## 重複するDOMや再レンダリングがある場合の対応ができないパターン
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import json
