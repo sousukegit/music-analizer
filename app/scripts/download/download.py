@@ -115,46 +115,52 @@ class YTDLPDownloader:
 
 # メイン処理（CSVからURLリストを取得して各動画を処理）
 def main():
-    # CSVファイルのパスを指定
-    from datetime import datetime
+    try:
+        # CSVファイルのパスを指定
+        from datetime import datetime
 
-    # 実行日のYYYYMMDDを計算
-    today_str = datetime.now().strftime("%Y%m%d")
-    csv_filename = f"{today_str}_videos.csv"
-    csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f"../../csv/{csv_filename}"))
-    print(f"CSVファイルのパス: {csv_path}")
-    
-    base_output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
-    downloader = YTDLPDownloader(
-        base_output_path, 
-        cookies_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../music.youtube.com_cookies.txt')
-    )
-    
-    # CSVファイルを読み込み、各行ごとにダウンロード処理を実行
-    with open(csv_path, 'r', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            title_csv = row.get("title")
-            artist_csv = row.get("artist")
-            url = row.get("url")
-            csv_url = url.split('&list=')[0]
-            print(f"ダウンロード開始: {title_csv} by {artist_csv}")
-            
-            metadata = downloader.download_audio(csv_url)
-            if metadata:
+        # 実行日のYYYYMMDDを計算
+        today_str = datetime.now().strftime("%Y%m%d")
+        csv_filename = f"{today_str}_videos.csv"
+        csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f"../../csv/{csv_filename}"))
+        print(f"CSVファイルのパス: {csv_path}")
+        
+        base_output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../music/downloaded')
+        downloader = YTDLPDownloader(
+            base_output_path, 
+            cookies_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../music.youtube.com_cookies.txt')
+        )
+        
+        # CSVファイルを読み込み、各行ごとにダウンロード処理を実行
+        with open(csv_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                title_csv = row.get("title")
+                artist_csv = row.get("artist")
+                url = row.get("url")
+                csv_url = url.split('&list=')[0]
+                print(f"ダウンロード開始: {title_csv} by {artist_csv}")
                 
-                csv_title = title_csv
-                csv_artist = artist_csv
-                
-                
-                song_id = downloader.insert_metadata_into_db(metadata, csv_title, csv_artist, csv_url)  # メタデータをデータベースに挿入しsong_idを取得
-                if song_id:
-                    downloader.organize_files(song_id)  # song_idを渡してファイルを整理・リネーム
+                metadata = downloader.download_audio(csv_url)
+                if metadata:
+                    
+                    csv_title = title_csv
+                    csv_artist = artist_csv
+                    
+                    
+                    song_id = downloader.insert_metadata_into_db(metadata, csv_title, csv_artist, csv_url)  # メタデータをデータベースに挿入しsong_idを取得
+                    if song_id:
+                        downloader.organize_files(song_id)  # song_idを渡してファイルを整理・リネーム
+                    else:
+                        print("song_idの取得に失敗しました。ファイルの整理をスキップします。")
                 else:
-                    print("song_idの取得に失敗しました。ファイルの整理をスキップします。")
-            else:
-                print("metadataの取得に失敗しました。")
+                    print("metadataの取得に失敗しました。")
+
+        return 0  # 正常終了
+    except Exception as e:
+        print(f"ダウンロード処理でエラーが発生しました: {e}")
+        return 1  # エラー終了
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
