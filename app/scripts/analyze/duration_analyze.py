@@ -3,6 +3,7 @@ import numpy as np
 import os
 import psycopg2
 from ..db.config import DB_CONFIG  # データベース設定をインポート
+import sys
 
 def detect_silent_sections(file_path, silence_threshold=-30.0, min_silence_duration=5):
     """
@@ -73,12 +74,12 @@ def insert_soro_records(song_id, silence_sections):
 
         # 既存の無音区間を取得
         cursor.execute("""
-            SELECT start_time, end_time FROM soro WHERE song_id = %s
+            SELECT start_time, end_time FROM "Soro" WHERE song_id = %s
         """, (song_id,))
         existing_sections = cursor.fetchall()
 
         insert_query = """
-            INSERT INTO soro (song_id, start_time, end_time, is_guitar_soro, guitar_score)
+            INSERT INTO "Soro" (song_id, start_time, end_time, is_guitar_soro, guitar_score)
             VALUES (%s, %s, %s, %s, %s)
         """
         new_records_count = 0
@@ -153,5 +154,13 @@ def process_all_vocal_files():
         else:
             print(f"フォルダ {folder} が見つかりません。")
 
+def main():
+    try:
+        process_all_vocal_files()
+        return 0  # 正常終了
+    except Exception as e:
+        print(f"間奏区間分析でエラーが発生しました: {e}")
+        return 1  # エラー終了
+
 if __name__ == "__main__":
-    process_all_vocal_files()
+    sys.exit(main())

@@ -14,6 +14,7 @@ from psycopg2 import sql
 from datetime import datetime
 import re
 from ..db.config import DB_CONFIG  # config.pyからDB設定をインポート
+import sys
 
 # ロギングの設定
 logging.basicConfig(
@@ -139,7 +140,7 @@ def get_guitar_intervals(song_id, connection):
         with connection.cursor() as cursor:
             query = sql.SQL("""
                 SELECT soro_id, start_time, end_time 
-                FROM soro 
+                FROM "Soro" 
                 WHERE song_id = %s 
             """)
             cursor.execute(query, (song_id,))
@@ -157,7 +158,7 @@ def update_soro_record(soro_id, is_guitar_detected, guitar_score, connection):
     try:
         with connection.cursor() as cursor:
             query = sql.SQL("""
-                UPDATE soro
+                UPDATE "Soro"
                 SET is_guitar_soro = %s,
                     guitar_score = %s
                 WHERE soro_id = %s
@@ -175,8 +176,8 @@ def update_soro_record(soro_id, is_guitar_detected, guitar_score, connection):
         raise
 
 def main():
-    # データベースに接続
     try:
+        # データベースに接続
         connection = psycopg2.connect(**DB_CONFIG)
         connection.autocommit = True  # 自動コミットを有効にする
         logging.info("データベースに正常に接続しました。")
@@ -207,59 +208,56 @@ def main():
 
         if not audio_files:
             logging.warning(f"ベースディレクトリ内に'guitar.wav'ファイルが見つかりませんでした: {base_dir}")
-            return
+            return 0  # 正常終了
 
-    except Exception as e:
-        logging.exception(f"音声ファイルの読み込み中にエラーが発生しました: {e}")
-        raise
+        all_segment_scores = {}
+        for audio_file in audio_files:
+            try:
+                # song_idを抽出
+                song_id = extract_song_id(audio_file)
+                # DBからギター区間を取得
+                intervals = get_guitar_intervals(song_id, connection)
+                if not intervals:
+                    logging.info(f"song_id {song_id} に対応するギター区間がDBに存在しません。")
+                    continue
 
-    all_segment_scores = {}
-    for audio_file in audio_files:
-        try:
-            # song_idを抽出
-            song_id = extract_song_id(audio_file)
-            # DBからギター区間を取得
-            intervals = get_guitar_intervals(song_id, connection)
-            if not intervals:
-                logging.info(f"song_id {song_id} に対応するギター区間がDBに存在しません。")
-                continue
+                for interval in intervals:
+                    soro_id, start_time, end_time = interval
+                    logging.info(f"Processing {audio_file} の時間範囲: {start_time} - {end_time} 秒 (soro_id: {soro_id})")
+                    segment_scores, segment_duration = detect_guitar_in_segments(
+                        audio_file, 
+                        segment_duration=5, 
+                        start_time=start_time, 
+                        end_time=end_time
+                    )
+                    key = f"{audio_file} ({start_time}-{end_time}s)"
+                    all_segment_scores[key] = segment_scores
 
-            for interval in intervals:
-                soro_id, start_time, end_time = interval
-                logging.info(f"Processing {audio_file} の時間範囲: {start_time} - {end_time} 秒 (soro_id: {soro_id})")
-                segment_scores, segment_duration = detect_guitar_in_segments(
-                    audio_file, 
-                    segment_duration=5, 
-                    start_time=start_time, 
-                    end_time=end_time
-                )
-                key = f"{audio_file} ({start_time}-{end_time}s)"
-                all_segment_scores[key] = segment_scores
+                    # 判定結果を出力
+                    max_score = max(segment_scores)
+                    is_guitar_detected = max_score > 0.5  # 最大スコアが0.5以上ならギターが存在
+                    if is_guitar_detected:
+                        logging.info(f"指定された時間範囲内でギターが検出されました ({key}) (最大スコア: {max_score:.2f})")
+                    else:
+                        logging.info(f"指定された時間範囲内でギターは検出されませんでした ({key}) (最大スコア: {max_score:.2f})")
 
-                # 判定結果を出力
-                max_score = max(segment_scores)
-                is_guitar_detected = max_score > 0.5  # 最大スコアが0.5以上ならギターが存在
-                if is_guitar_detected:
-                    logging.info(f"指定された時間範囲内でギターが検出されました ({key}) (最大スコア: {max_score:.2f})")
-                else:
-                    logging.info(f"指定された時間範囲内でギターは検出されませんでした ({key}) (最大スコア: {max_score:.2f})")
+                    # soroレコードを更新
+                    update_soro_record(soro_id, is_guitar_detected, max_score, connection)
 
-                # soroレコードを更新
-                update_soro_record(soro_id, is_guitar_detected, max_score, connection)
+            except Exception as e:
+                logging.error(f"ファイルの処理中にエラーが発生しました ({audio_file}): {e}")
 
-        except Exception as e:
-            logging.error(f"ファイルの処理中にエラーが発生しました ({audio_file}): {e}")
+        # スコアの可視化
+        if all_segment_scores:
+            visualize_combined_scores(all_segment_scores, segment_duration)
 
-    # スコアの可視化
-    if all_segment_scores:
-        visualize_combined_scores(all_segment_scores, segment_duration)
-
-    # データベース接続を閉じる
-    try:
+        # データベース接続を閉じる
         connection.close()
         logging.info("データベース接続を閉じました。")
+        return 0  # 正常終了
     except Exception as e:
-        logging.error(f"データベース接続のクローズに失敗しました: {e}")
+        print(f"ギター分析でエラーが発生しました: {e}")
+        return 1  # エラー終了
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

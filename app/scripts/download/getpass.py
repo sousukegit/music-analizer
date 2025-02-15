@@ -6,22 +6,15 @@ import time
 import traceback
 import csv
 import os
+import sys
 
 # JSON ファイルパス
 COOKIE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../music.youtube.com_cookies.json")
 CSV_FILE = f"app/csv/{time.strftime('%Y%m%d')}_videos.csv"
 # PLAYLIST_URL = "https://music.youtube.com/watch?v=R2nhllG6SKs&list=RDTMAK5uy_mZtXeU08kxXJOUhL0ETdAuZTh1z7aAFAo"
-PLAYLIST_URL = "https://music.youtube.com/watch?v=su5oj4X9_AU&list=RDCLAK5uy_m1h6RaRmM8e_3k7ec4ZVJzfo2pXdLrY_k"
+PLAYLIST_URL = "https://music.youtube.com/watch?v=W5g3V0T-BTg&list=RDCLAK5uy_m1h6RaRmM8e_3k7ec4ZVJzfo2pXdLrY_k"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
-# def load_cookies(driver, cookie_file):
-#     try:
-#         with open(cookie_file, "r", encoding="utf-8") as f:
-#             cookies = json.load(f)
-#         for cookie in cookies:
-#             driver.add_cookie(cookie)
-#     except Exception as e:
-#         print(f"❌ クッキーの読み込みまたは適用に失敗しました: {e}")
 
 def load_cookies(driver, cookie_file):
     """クッキーを Selenium に適用する"""
@@ -50,7 +43,7 @@ def load_cookies(driver, cookie_file):
 
 def get_playlist_videos(playlist_url):
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless=False")
+    options.add_argument("--headless=True")
     options.add_argument(f"user-agent={USER_AGENT}")
     driver = webdriver.Chrome(options=options)
     
@@ -131,17 +124,31 @@ def get_playlist_videos(playlist_url):
 
 def save_to_csv(video_data, filename=CSV_FILE):
     try:
-        with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        # CSVファイルが存在しない場合は作成
+        if not os.path.exists(filename):
+            with open(filename, mode="w", newline="", encoding="utf-8") as file:
+                writer = csv.DictWriter(file, fieldnames=["title", "artist", "url"])
+                writer.writeheader()
+        
+        # データをCSVファイルに書き込む
+        with open(filename, mode="a", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=["title", "artist", "url"])
-            writer.writeheader()
             writer.writerows(video_data)
         print(f"✅ {filename} に保存しました！")
     except Exception as e:
         print(f"❌ CSV ファイルへの保存中にエラーが発生しました: {e}")
 
+def main():
+    try:
+        videos = get_playlist_videos(PLAYLIST_URL)
+        if videos:
+            save_to_csv(videos)
+        else:
+            print("❌ 動画データが取得できませんでした。")
+        return 0  # 正常終了
+    except Exception as e:
+        print(f"getpassでエラーが発生しました: {e}")
+        return 1  # エラー終了
+
 if __name__ == "__main__":
-    videos = get_playlist_videos(PLAYLIST_URL)
-    if videos:
-        save_to_csv(videos)
-    else:
-        print("❌ 動画データが取得できませんでした。")
+    sys.exit(main())
