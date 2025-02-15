@@ -1,0 +1,55 @@
+=== 現在のテーブル一覧 ===
+
+テーブル名: Artist
+カラム情報:
+  - artist_id: integer (デフォルト: nextval('"Artist_artist_id_seq"'::regclass)) NOT NULL
+  - english_name: text NOT NULL
+  - japanese_name: text NULL許容
+  - kana_name: text NULL許容
+  - created_at: timestamp without time zone (デフォルト: CURRENT_TIMESTAMP) NOT NULL
+
+テーブル名: Song
+カラム情報:
+  - song_id: integer (デフォルト: nextval('"Song_song_id_seq"'::regclass)) NOT NULL
+  - title: text NOT NULL
+  - youtube_music_id: text NULL許容
+  - url: text NULL許容
+  - duration: double precision NULL許容
+  - created_at: timestamp without time zone (デフォルト: CURRENT_TIMESTAMP) NOT NULL
+  - artist_id: integer NULL許容
+  - release_date: timestamp without time zone NULL許容
+  - is_separated: boolean (デフォルト: false) NOT NULL
+外部キー制約:
+  - artist_id -> Artist(artist_id)
+
+テーブル名: Soro
+カラム情報:
+  - soro_id: integer (デフォルト: nextval('"Soro_soro_id_seq"'::regclass)) NOT NULL
+  - song_id: integer NOT NULL
+  - start_time: double precision NOT NULL
+  - end_time: double precision NOT NULL
+  - is_guitar_soro: boolean (デフォルト: false) NOT NULL
+  - guitar_score: double precision NULL許容
+  - created_at: timestamp without time zone (デフォルト: CURRENT_TIMESTAMP) NOT NULL
+外部キー制約:
+  - song_id -> Song(song_id)
+
+テーブル名: User
+カラム情報:
+  - id: integer (デフォルト: nextval('"User_id_seq"'::regclass)) NOT NULL
+  - email: text NOT NULL
+  - name: text NOT NULL
+  - created_at: timestamp without time zone (デフォルト: CURRENT_TIMESTAMP) NOT NULL
+  - updated_at: timestamp without time zone NOT NULL
+
+テーブル名: _prisma_migrations
+カラム情報:
+  - id: character varying NOT NULL
+  - checksum: character varying NOT NULL
+  - finished_at: timestamp with time zone NULL許容
+  - migration_name: character varying NOT NULL
+  - logs: text NULL許容
+  - rolled_back_at: timestamp with time zone NULL許容
+  - started_at: timestamp with time zone (デフォルト: now()) NOT NULL
+  - applied_steps_count: integer (デフォルト: 0) NOT NULL
+

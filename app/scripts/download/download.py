@@ -69,19 +69,20 @@ class YTDLPDownloader:
             print(f"データベースに接続しました: {conn}")
 
             # Artistsテーブルにアーティストを挿入または存在確認
-            cursor.execute("SELECT artist_id FROM Artists WHERE english_name = %s", (english_name,))
+            cursor.execute('SELECT artist_id FROM "Artist" WHERE english_name = %s', (english_name,))
             artist = cursor.fetchone()
             print(f"アーティストの取得: {artist}")
             if artist:
                 artist_id = artist[0]
             else:
-                cursor.execute("INSERT INTO Artists (english_name, japanese_name) VALUES (%s, %s) RETURNING artist_id", (english_name, japanese_name,))
+                cursor.execute('INSERT INTO "Artist" (english_name, japanese_name) VALUES (%s, %s) RETURNING artist_id', (english_name, japanese_name,))
+
                 artist_id = cursor.fetchone()[0]
             print(f"アーティストの挿入: {artist_id}")
             
             # Songsテーブルに曲を挿入
             cursor.execute("""
-                INSERT INTO Songs (title, duration, youtube_music_id, artist_id, url, release_date)
+                INSERT INTO "Song" (title, duration, youtube_music_id, artist_id, url, release_date)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (youtube_music_id) DO NOTHING
                 RETURNING song_id
@@ -93,7 +94,7 @@ class YTDLPDownloader:
                 print(f"曲が挿入されました。song_id: {song_id}")
             else:
                 # 既に存在する場合、song_idを取得
-                cursor.execute("SELECT song_id FROM Songs WHERE youtube_music_id = %s", (youtube_music_id,))
+                cursor.execute('SELECT song_id FROM "Song" WHERE youtube_music_id = %s', (youtube_music_id,))
                 song = cursor.fetchone()
                 song_id = song[0] if song else None
                 print(f"既存の曲のsong_id: {song_id}")

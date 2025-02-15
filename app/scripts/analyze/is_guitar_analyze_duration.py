@@ -140,7 +140,7 @@ def get_guitar_intervals(song_id, connection):
         with connection.cursor() as cursor:
             query = sql.SQL("""
                 SELECT soro_id, start_time, end_time 
-                FROM soro 
+                FROM "Soro" 
                 WHERE song_id = %s 
             """)
             cursor.execute(query, (song_id,))
@@ -158,7 +158,7 @@ def update_soro_record(soro_id, is_guitar_detected, guitar_score, connection):
     try:
         with connection.cursor() as cursor:
             query = sql.SQL("""
-                UPDATE soro
+                UPDATE "Soro"
                 SET is_guitar_soro = %s,
                     guitar_score = %s
                 WHERE soro_id = %s

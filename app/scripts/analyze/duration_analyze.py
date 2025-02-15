@@ -74,12 +74,12 @@ def insert_soro_records(song_id, silence_sections):
 
         # 既存の無音区間を取得
         cursor.execute("""
-            SELECT start_time, end_time FROM soro WHERE song_id = %s
+            SELECT start_time, end_time FROM "Soro" WHERE song_id = %s
         """, (song_id,))
         existing_sections = cursor.fetchall()
 
         insert_query = """
-            INSERT INTO soro (song_id, start_time, end_time, is_guitar_soro, guitar_score)
+            INSERT INTO "Soro" (song_id, start_time, end_time, is_guitar_soro, guitar_score)
             VALUES (%s, %s, %s, %s, %s)
         """
         new_records_count = 0

@@ -12,7 +12,7 @@ import sys
 COOKIE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../music.youtube.com_cookies.json")
 CSV_FILE = f"app/csv/{time.strftime('%Y%m%d')}_videos.csv"
 # PLAYLIST_URL = "https://music.youtube.com/watch?v=R2nhllG6SKs&list=RDTMAK5uy_mZtXeU08kxXJOUhL0ETdAuZTh1z7aAFAo"
-PLAYLIST_URL = "https://music.youtube.com/watch?v=63jyvqeSQKQ&list=RDCLAK5uy_kRu55OkdwHO0tHD13zgL8Yel4oruGdURA"
+PLAYLIST_URL = "https://music.youtube.com/watch?v=W5g3V0T-BTg&list=RDCLAK5uy_m1h6RaRmM8e_3k7ec4ZVJzfo2pXdLrY_k"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
 
@@ -124,9 +124,15 @@ def get_playlist_videos(playlist_url):
 
 def save_to_csv(video_data, filename=CSV_FILE):
     try:
-        with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        # CSVファイルが存在しない場合は作成
+        if not os.path.exists(filename):
+            with open(filename, mode="w", newline="", encoding="utf-8") as file:
+                writer = csv.DictWriter(file, fieldnames=["title", "artist", "url"])
+                writer.writeheader()
+        
+        # データをCSVファイルに書き込む
+        with open(filename, mode="a", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=["title", "artist", "url"])
-            writer.writeheader()
             writer.writerows(video_data)
         print(f"✅ {filename} に保存しました！")
     except Exception as e:

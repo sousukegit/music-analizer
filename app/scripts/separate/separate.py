@@ -19,7 +19,7 @@ def update_separation_status(song_id):
         cursor = conn.cursor()
         
         cursor.execute("""
-            UPDATE songs 
+            UPDATE "Song" 
             SET is_separated = TRUE 
             WHERE song_id = %s
         """, (song_id,))
